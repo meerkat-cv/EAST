@@ -88,8 +88,8 @@ def draw_illu(illu, rst):
     return illu
 
 
-def save_result(img, rst, original_image_name):
-    session_id = 'test_001' 
+def save_result(img, rst, original_image_name, max_size):
+    session_id = 'test_size_{}'.format(max_size) 
     dirpath = os.path.join('static/results', session_id)
     os.makedirs(dirpath, exist_ok=True)
 
@@ -111,11 +111,18 @@ def save_result(img, rst, original_image_name):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--path')
+    parser.add_argument('--max_size')
     args = parser.parse_args()
 
-    for f in os.listdir(args.path):
+    max_size = int(args.max_size)
+
+    for f in sorted(os.listdir(args.path)):
         im_path = args.path+'/'+f
         img = cv2.imread(im_path)
+        W, H = img.shape[1], img.shape[0]
+        biggest_size = H if H>W else W
+        scale = max_size/biggest_size
+        img = cv2.resize(img, (0,0), fx=scale, fy=scale)
         rst = predictor(img)
 
-        save_result(img, rst, f)
+        save_result(img, rst, f, max_size)
