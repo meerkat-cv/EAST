@@ -133,10 +133,46 @@ def minBoundingRect(hull_points_2d):
 
     # Calculate corner points and project onto rotated frame
     corner_points = np.zeros( (4,2) ) # empty 2 column array
-    corner_points[0] = np.dot( [ max_x, min_y ], R )
+
+    corner_points[2] = np.dot( [ max_x, min_y ], R )
     corner_points[1] = np.dot( [ min_x, min_y ], R )
-    corner_points[2] = np.dot( [ min_x, max_y ], R )
+    corner_points[0] = np.dot( [ min_x, max_y ], R )
     corner_points[3] = np.dot( [ max_x, max_y ], R )
+
+        
+    mid_points = []
+    for i in range(4):
+        i2 = (i+1)%4
+        p1 = np.array(corner_points[i])
+        p2 = np.array(corner_points[i2])
+        mid_points.append((p1+p2)/2)
+
+    bigger_side, bigger_side_idx = 0, -1
+    for i in range(4):
+        i2 = (i+1)%4
+        side_len = np.linalg.norm(np.array(corner_points[i])-np.array(corner_points[i2]))
+        if side_len > bigger_side:
+            bigger_side = side_len
+            bigger_side_idx = i
+
+    top_idx    = bigger_side_idx
+    bottom_idx = (top_idx+2)%4
+    if mid_points[top_idx][1] > mid_points[bottom_idx][1]:
+        aux = top_idx
+        top_idx = bottom_idx
+        bottom_idx = aux
+
+    right_idx = (top_idx+1)%4
+    left_idx = (right_idx+2)%4
+
+    p1 = np.copy(corner_points[top_idx])
+    p2 = np.copy(corner_points[right_idx])
+    p3 = np.copy(corner_points[bottom_idx])
+    p4 = np.copy(corner_points[left_idx])
+    corner_points[0] = np.copy(p4)
+    corner_points[1] = np.copy(p1)
+    corner_points[2] = np.copy(p2)
+    corner_points[3] = np.copy(p3)
 
     return (angle, min_bbox[1], min_bbox[2], min_bbox[3], center_point, corner_points) # rot_angle, area, width, height, center_point, corner_points
 
@@ -250,6 +286,24 @@ def merge_boxes(boxes, img = None):
             res = res+get_connections(connections, bbs_used, next_box)
         return res
 
+    def expand_box(points):
+        midpoint_left   = (np.array(points[0])+np.array(points[1]))/2
+        midpoint_right  = (np.array(points[2])+np.array(points[3]))/2
+        midpoint_top    = (np.array(points[1])+np.array(points[2]))/2
+        midpoint_bottom = (np.array(points[3])+np.array(points[0]))/2
+        direction = midpoint_right-midpoint_left
+        direction = direction/np.linalg.norm(direction)
+
+        height = np.linalg.norm(midpoint_bottom-midpoint_top)
+
+        new_points = np.copy(points)
+        new_points[0] -= direction*height*1.5
+        new_points[1] -= direction*height*1.5
+        new_points[2] += direction*height*1.5
+        new_points[3] += direction*height*1.5
+
+        return new_points
+        
     final_bbs = []
     while next_bb != -1:
         all_boxes = get_connections(connections, bbs_used, next_bb)
@@ -261,6 +315,7 @@ def merge_boxes(boxes, img = None):
         all_points = np.array(all_points)
         rot_angle, area, width, height, center_point, corner_points = minBoundingRect(all_points)
 
+        corner_points = expand_box(corner_points)
         final_bbs.append(corner_points)
         for i in range(4):
             x1 = int(corner_points[i][0])
