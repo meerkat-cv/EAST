@@ -202,9 +202,10 @@ def merge_boxes(boxes, img = None):
         closest_box[idx] = (100000000, -1)
         for idx2,b2 in enumerate(organized_boxes):
             if idx == idx2: continue
-            # distance between b[right] and b2[left]
+            # distance between b[right] and b2[left] < threshold
+            # or they are intersecting each other
             dist = np.linalg.norm(np.array(b[2+4])-np.array(b2[0+4]))
-            if dist < closest_box[idx][0]:# and b[2+4][0] < b2[0+4][0]:
+            if dist < closest_box[idx][0] or (b[2+4][0] >= b2[0+4][0] and b2[0+4][0] > b[0+4][0]):
                 if left_to_right_intersection(b, b2):
                     closest_box[idx] = (dist, idx2)
                     min_box_dist = np.linalg.norm(b[1+4]-b[3+4])*2
